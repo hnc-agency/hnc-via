@@ -1,0 +1,15 @@
+{
+	application,
+	hnc_via,
+ 	[
+		{description, "Local registry by HNC-Agency"},
+		{vsn, "0.1.0"},
+		{modules, [hnc_via, hnc_via_app, hnc_via_sup]},
+		{registered, [hnc_via_sup]},
+		{applications, [kernel, stdlib]},
+		{mod, {hnc_via_app, []}},
+		{licenses, [<<"ISC">>]},
+		{build_tools, [<<"make">>, <<"rebar3">>]},
+		{links, #{<<"GitHub">> => <<"https://github.com/hnc-agency/hnc-via">>}}
+	]
+}.
