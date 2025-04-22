@@ -3,8 +3,12 @@
 -behavior(gen_server).
 
 -export([start_link/0]).
--export([register_name/2, unregister_name/1, whereis_name/1, send/2]).
--export([registered_names/0]).
+-export([register_name/2, register/2]).
+-export([unregister_name/1, unregister/1]).
+-export([whereis_name/1, whereis/1]).
+-export([send/2]).
+-export([registered_names/0, registered/0]).
+
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
 -record(init_state, {pending = []}).
@@ -38,12 +42,49 @@ register_name(Name, Pid) ->
 	exit({badarg, {Name, Pid}}).
 
 -doc """
+Associates name `Name` with the given pid `Pid`.
+
+Exits with reason `badarg` if:
+* `Pid` is not the pid of a local process
+* `Pid` is already registered
+* `Name` is already registered
+""".
+-spec register(Name, Pid) -> true
+	when Name :: term(),
+	     Pid :: pid().
+register(Name, Pid) when is_pid(Pid), node() =:= node(Pid) ->
+	case register_name(Name, Pid) of
+		yes ->
+			true;
+		no ->
+			exit(badarg)
+	end;
+register(_Name, _Pid) ->
+	exit(badarg).
+
+-doc """
 Unregisters the process currently registered under the given `Name`.
 """.
 -spec unregister_name(Name) -> _
 	when Name :: term().
 unregister_name(Name) ->
-	gen_server:call(?MODULE, {unregister, Name}, infinity).
+	_ = gen_server:call(?MODULE, {unregister, Name}, infinity),
+	ok.
+
+-doc """
+Unregisters the process currently registered under the given `Name`.
+
+Exits with reason `badarg` if the given `Name` is not registered.
+""".
+-spec unregister(Name) -> true
+	when Name :: term().
+unregister(Name) ->
+	case gen_server:call(?MODULE, {unregister, Name}, infinity) of
+		yes ->
+		       true;
+		no ->
+			exit(badarg)
+	end.
 
 -doc """
 Returns the pid with the registered name `Name`.
@@ -55,6 +96,13 @@ Returns `undefined` if the name is not registered.
 	     Result :: pid() | 'undefined'.
 whereis_name(Name) ->
 	ets:lookup_element(?MODULE, {name, Name}, 2, undefined).
+
+-doc(#{equiv => whereis_name(Name)}).
+-spec whereis(Name) -> Result
+	when Name :: term(),
+	     Result :: pid() | 'undefined'.
+whereis(Name) ->
+	whereis_name(Name).
 
 -doc """
 Sends message `Msg` to the pid registered as `Name`.
@@ -82,6 +130,12 @@ Returns a list of all registered names.
 	when Name :: term().
 registered_names() ->
 	[Name || [Name] <- ets:match(?MODULE, {{name, '$1'}, '_', '_'})].
+
+-doc(#{equiv => registered_names()}).
+-spec registered() -> [Name]
+	when Name :: term().
+registered() ->
+	registered_names().
 
 
 -doc false.
@@ -170,11 +224,11 @@ do_register(Name, Pid) ->
 do_unregister(Name) ->
 	case ets:take(?MODULE, {name, Name}) of
 		[] ->
-			ok;
+			no;
 		[{{name, Name}, Pid, Mon}] ->
 			true = ets:delete(?MODULE, {pid, Pid}),
 			demonitor(Mon, [flush]),
-			ok
+			yes
 	end.
 
 -if(?OTP_RELEASE >= 28).
