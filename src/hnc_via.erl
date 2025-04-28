@@ -164,10 +164,10 @@ handle_info({{'DOWN', Name}, Mon, process, Pid, _Reason}, State=#state{}) ->
 	true = ets:delete_object(?MODULE, {{name, Name}, Pid, Mon}),
 	true = ets:delete_object(?MODULE, {{pid, Pid}, Mon}),
 	{noreply, State};
-handle_info({'ETS-TRANSFER', ?MODULE, From, From}, State=#init_state{pending = Pending}) ->
+handle_info({'ETS-TRANSFER', ?MODULE, From, From}, #init_state{pending = Pending}) ->
 	ok = init_from_table(),
 	ok = process_pending(Pending),
-	{noreply, State#state{}};
+	{noreply, #state{}};
 handle_info(_Msg, State) ->
 	{noreply, State}.
 
